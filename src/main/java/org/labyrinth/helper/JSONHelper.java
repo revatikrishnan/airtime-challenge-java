@@ -3,7 +3,12 @@ package org.labyrinth.helper;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -20,7 +25,11 @@ import com.jayway.restassured.response.Response;
 public class JSONHelper extends RESTHelper{
 
     JsonPath jp;
+    // Storing the roomid (which has light) and their respective order from the wall json
+    SortedMap<String, Integer> lightRoomsAndTheirOrder = new TreeMap<String, Integer>();
     
+    // sorting the roomids accoring to their order from the sorted map and storing the roomIds
+    ArrayList<String> lightRoomsInOrder=new ArrayList<String>();
     /**
      * 
      * @param roomId
@@ -126,8 +135,8 @@ public class JSONHelper extends RESTHelper{
     public ArrayList<String> extractAlltheLightLessRoomIds() {
         Set<String> refinedRoomIds = extractAllRoomIds();
         
-        
-        ArrayList<String> lightLessRooms=new ArrayList<String>();
+       
+        ArrayList<String> lightLessRoomsInOrder=new ArrayList<String>();
         
         for(String eachRoomId:refinedRoomIds){
             Response res1=hitTheWallApiForLightDetails(eachRoomId);
@@ -139,12 +148,58 @@ public class JSONHelper extends RESTHelper{
             Integer order=Integer.parseInt(writeOrder.get("order").toString());
             
             if(writing.equals("xx")&&order==-1){
-                lightLessRooms.add(eachRoomId);
+                lightLessRoomsInOrder.add(eachRoomId);  
+            }
+            else{
+                lightRoomsAndTheirOrder.put(eachRoomId, getOrderOfRoom(eachRoomId));
             }
         }
-        return lightLessRooms;
+        
+        SortedSet<Map.Entry<String, Integer>> sortedset = new TreeSet<Map.Entry<String, Integer>>(
+                (e1,e2) ->e1.getValue().compareTo(e2.getValue()) );
+        
+        System.out.println("LIGHT ROOM AND ORDER "+lightRoomsAndTheirOrder);
+        sortedset.addAll(lightRoomsAndTheirOrder.entrySet());
+        
+        
+        for(Map.Entry<String, Integer> s : sortedset){
+            lightRoomsInOrder.add(s.getKey());
+        }
+        System.out.println("LIGHT ROOM IN ORDER "+lightRoomsInOrder);
+        return lightLessRoomsInOrder;
     }
 
+    public String getTheChallengeCodeByConcatenation(){
+        String challengecd="";
+        for(String roomId:lightRoomsInOrder){
+            if(challengecd=="")
+                challengecd=getWritingOfRoom(roomId);
+            else
+                challengecd=challengecd+getWritingOfRoom(roomId);
+            
+        }
+        return challengecd;
+    }
+    
+    
+    public String getWritingOfRoom(String roomId){
+        Response res1=hitTheWallApiForLightDetails(roomId);
+        String lightJson=res1.asString();
+        jp=new JsonPath(lightJson);
+        HashMap<Object, Object> writeOrder=jp.get();
+        String writing=writeOrder.get("writing").toString();
+        return writing;
+    }
+    
+    
+    public Integer getOrderOfRoom(String roomId){
+        Response res1=hitTheWallApiForLightDetails(roomId);
+        String lightJson=res1.asString();
+        jp=new JsonPath(lightJson);
+        HashMap<Object, Object> writeOrder=jp.get();
+        Integer order=Integer.parseInt(writeOrder.get("order").toString());
+        return order;
+    }
     /**
      * 
      * @param lightLessRooms
@@ -155,7 +210,7 @@ public class JSONHelper extends RESTHelper{
         JSONObject report=new JSONObject();
         JSONArray lighLess=new JSONArray(lightLessRooms);
         report.put("roomIds", lighLess);
-        report.put("challenge", "7182");
+        report.put("challenge", challengeCode);
         
         System.out.println("Report Json Generated "+report.toString(2));
         return report.toString();
