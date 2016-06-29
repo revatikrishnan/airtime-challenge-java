@@ -19,7 +19,8 @@ public class AirtimeLabyrinthTest extends TestBase {
         ArrayList<String> lightLessRooms=jsonhelper.extractAlltheLightLessRoomIds();
         
         
-        String challengeCode="7182";
+        String challengeCode=jsonhelper.getTheChallengeCodeByConcatenation();
+        System.out.println("CHALLENGE CODE: "+challengeCode);
         int expected = 200;
         
         try {
